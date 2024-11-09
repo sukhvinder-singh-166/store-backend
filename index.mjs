@@ -12,9 +12,16 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  products: { type: Array, default: [] },
 });
-
+const productSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+  description: { type: String, required: true },
+  image: { type: String, required: true },
+});
 const User = mongoose.model("User", userSchema);
+const Product = mongoose.model("Product", productSchema);
 
 app.post("/signup", async (req, res) => {
   try {
@@ -83,6 +90,49 @@ app.post("/login", async (req, res) => {
     res.json({ message: "Internal server error" });
   }
 });
+app.post("/addProduct", async (req, res) => {
+  try {
+    const { email, product } = req.body;
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      return res.json({ message: "User not found" });
+    }
+    if (!product) {
+      return res.json({ message: "Product is required" });
+    }
+    const productExists = user.products.find((p) => p.name === product.name);
+    if (productExists) {
+      return res.json({ message: "Product already exists" });
+    }
+    user.products.push(product);
+    await user.save();
+    res.json({ message: "Product added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.json({ message: "Internal server error" });
+  }
+});
+app.get("/getCart", async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: "email is required" });
+  }
+
+  try {
+    const user = await User.findOne({ email: email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({ products: user.products });
+  } catch (err) {
+    console.error("Error finding user or cart:", err);
+    return res.status(500).json({ message: "Database error" });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
