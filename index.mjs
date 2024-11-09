@@ -132,6 +132,42 @@ app.get("/getCart", async (req, res) => {
     return res.status(500).json({ message: "Database error" });
   }
 });
+app.delete("/deleteProduct", async (req, res) => {
+  const { email, productName } = req.body; // email and product name from request body
+
+  if (!email || !productName) {
+    return res
+      .status(400)
+      .json({ message: "Email and product name are required" });
+  }
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email: email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find the product index in user's cart
+    const productIndex = user.products.findIndex(
+      (product) => product.name === productName
+    );
+
+    if (productIndex === -1) {
+      return res.status(404).json({ message: "Product not found in the cart" });
+    }
+
+    // Remove the product from user's cart
+    user.products.splice(productIndex, 1);
+    await user.save();
+
+    res.json({ message: "Product removed from cart", products: user.products });
+  } catch (error) {
+    console.error("Error removing product from cart:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
